@@ -1,8 +1,9 @@
 # Core application dependencies (UI, Data, LLM)
 streamlit
 pandas
+plotly
 openai
 pydantic
-
+tabulate
 # Configuration and Environment Management
 python-dotenv

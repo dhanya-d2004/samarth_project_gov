@@ -13,6 +13,7 @@ Use the sidebar or tabs above to explore:
 - 🌾 Crop Production Trends
 - 📊 Yield vs Rainfall Correlation
 - 🗺️ Statewise Insights
+- 🤖 **LLM Chatbot** (New!)(prototype)
 """)
 
 # Load dataset

@@ -40,8 +40,9 @@ This script creates the samarth_agri_climate.db file and populates the integrate
 
 
 Step 4: Run the Chatbot
-Ensure your file name is lowercase (chatbot.py).
+Ensure your file name is in correct case (Home.py).
 Run the Streamlit application from your terminal:
 streamlit run Home.py
 The application will launch in your default web browser.
+
 

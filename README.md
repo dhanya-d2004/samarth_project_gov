@@ -33,6 +33,7 @@ Paste the copied key into the .env file as instructed in Step 2 of the setup gui
 Step 3: Set Up the Database
 You need to load the data from the CSV file into a local SQLite database that the chatbot can query.
 Ensure you have crop_rainfall_integrated_cleaned.csv in the same directory as setup_db.py.
+Copy the relative path of the csv file and paste it in setup_db.py file.
 Run the database setup script:
 python setup_db.py
 This script creates the samarth_agri_climate.db file and populates the integrated_data table.
@@ -41,5 +42,6 @@ This script creates the samarth_agri_climate.db file and populates the integrate
 Step 4: Run the Chatbot
 Ensure your file name is lowercase (chatbot.py).
 Run the Streamlit application from your terminal:
-streamlit run chatbot.py
+streamlit run Home.py
 The application will launch in your default web browser.
+

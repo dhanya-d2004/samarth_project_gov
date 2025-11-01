@@ -81,11 +81,10 @@ def prompt_to_sql(prompt: str) -> Optional[str]:
     {{"sql_query": "SELECT state_canonical AS Region, 'Avg_Rainfall_mm' AS Metric, ROUND(AVG(annual_rainfall_mm), 2) AS Value, 'N/A' AS Context FROM integrated_data WHERE (state_canonical = 'karnataka' OR state_canonical = 'kerala') AND year >= (SELECT MAX(year) - 5 FROM integrated_data) GROUP BY state_canonical UNION ALL SELECT state_canonical AS Region, 'Max_Rice_Production' AS Metric, SUM(CASE WHEN crop LIKE '%Rice%' THEN production_tonnes ELSE 0 END) AS Value, 'Total Rice Production' AS Context FROM integrated_data WHERE (state_canonical = 'karnataka' OR state_canonical = 'kerala') AND year >= (SELECT MAX(year) - 5 FROM integrated_data) GROUP BY state_canonical;"}}
 
     # 2. TEMPLATE: District Comparison (Ranking with Subqueries)
-    # This requires nested queries to find MAX/MIN in different states.
+    # This requires nested queries to find MAX/MIN in different states using a subquery for each part.
     
     Example for 'Identify the district in State_X with the highest production of Crop_Z in the most recent year available and compare that with the district with the lowest production of Crop_Z in State_Y.':
-    {{"sql_query": "SELECT 'Highest in Karnataka' AS Comparison, T1.district, T1.production_tonnes FROM integrated_data T1 WHERE T1.state_canonical = 'karnataka' AND T1.crop LIKE '%Rice%' AND T1.year = (SELECT MAX(year) FROM integrated_data) ORDER BY T1.production_tonnes DESC LIMIT 1 UNION ALL SELECT 'Lowest in Kerala' AS Comparison, T2.district, T2.production_tonnes FROM integrated_data T2 WHERE T2.state_canonical = 'kerala' AND T2.crop LIKE '%Rice%' AND T2.year = (SELECT MAX(year) FROM integrated_data) ORDER BY T2.production_tonnes ASC LIMIT 1;"}}
-    
+    {{"sql_query": "SELECT 'Highest in West Bengal' AS Comparison, district, production_tonnes FROM (SELECT district, production_tonnes FROM integrated_data WHERE state_canonical = 'west bengal' AND crop LIKE '%Wheat%' AND year = (SELECT MAX(year) FROM integrated_data) ORDER BY production_tonnes DESC LIMIT 1) UNION ALL SELECT 'Lowest in Bihar' AS Comparison, district, production_tonnes FROM (SELECT district, production_tonnes FROM integrated_data WHERE state_canonical = 'bihar' AND crop LIKE '%Wheat%' AND year = (SELECT MAX(year) FROM integrated_data) ORDER BY production_tonnes ASC LIMIT 1);"}}
     # 3. TEMPLATE: Correlation/Trend Analysis (Time Series)
     # Focuses on selecting time-series data for synthesis.
 

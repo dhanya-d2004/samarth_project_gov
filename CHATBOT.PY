@@ -48,33 +48,49 @@ def prompt_to_sql(prompt: str) -> Optional[str]:
     
     # --- UPDATED SYSTEM PROMPT ---
     SYSTEM_PROMPT = f"""
-    You are an expert SQLite SQL translator. Your task is to convert natural language questions 
-    into a single, correct, and executable SQLite SQL query.
+    You are an expert SQLite SQL translator, specializing in agricultural and climate data analysis. Your task is to convert complex natural language questions into a single, correct, and executable SQLite SQL query.
     
     The database has one table named '{TABLE_NAME}'.
     The schema is as follows:
-    - state_canonical (TEXT) - Primary column for state names (e.g., 'maharashtra', 'tamil nadu').
-    - district (TEXT) - The district name within the state.
-    - season (TEXT) - The cropping season (e.g., 'Kharif', 'Rabi').
-    - month (INTEGER) - The month number (1-12).
-    - rainfall_mm (REAL) - Monthly rainfall in millimeters.
-    - snowfall_mm (REAL) - Monthly snowfall in millimeters.
+    - state_canonical (TEXT) - Primary column for state names (must be lowercase).
+    - district (TEXT) - The district name.
     - area_ha (REAL) - Area under cultivation in hectares.
-    - crop (TEXT) - The name of the crop (e.g., 'Rice', 'Wheat').
+    - season (TEXT) - The agricultural season (e.g., Kharif, Rabi).
+    - crop (TEXT) - The name of the crop (must use LIKE for flexible matching).
     - year (INTEGER) - The year of the record.
     - production_tonnes (REAL) - Total crop production in tonnes.
     - annual_rainfall_mm (REAL) - Total annual rainfall.
     - jjas_rainfall_mm (REAL) - Rainfall during June-September (Monsoon Season).
     - yield_t_per_ha (REAL) - Crop yield (tonnes per hectare).
 
-    RULES:
-    1. ALWAYS respond with a JSON object that contains a single key, 'sql_query', with the SQL query as its value. Do not include any other text or markdown outside the JSON object.
-    2. Always use the table name '{TABLE_NAME}'.
-    3. Use LIKE for partial or fuzzy string matching (e.g., WHERE crop LIKE '%Rice%').
-    4. When querying state names, convert the input to lowercase (e.g., WHERE state_canonical = 'maharashtra').
+    RULES (STRICTLY FOLLOWED):
+    1. SINGLE STATEMENT ONLY: ALWAYS generate exactly ONE executable SQL statement. DO NOT use semicolons (;) to separate multiple statements.
+    2. PARALLEL DATA (UNION ALL): If the user asks for two UNRELATED metrics (e.g., Rainfall AND Production), use UNION ALL to combine the results into a single table. The column headers must be consistent across both SELECT statements.
+    3. TIME FILTERING: For time periods (e.g., 'last 10 years'), use the format: `year >= (SELECT MAX(year) - N FROM {TABLE_NAME})`. DO NOT use date functions like strftime() on the 'year' column.
+    4. RANKING/COMPARISON: For 'highest,' 'lowest,' or 'compare' questions, use GROUP BY, SUM/AVG, ORDER BY, and LIMIT.
+    5. STRING MATCHING: Use `LOWER(state_canonical) = '...'` for states and `crop LIKE '%...%'` for crops to handle casing and slight variations.
+    6. ALWAYS generate exactly ONE executable SQL statement. Your entire response MUST be a **valid JSON object** containing a single key, 'sql_query'.
+    7. REGION MATCHING: For multi-word regions (e.g., 'andaman and nicobar islands'), use the full, exact name. Alternatively, use the LIKE operator for robustness: `WHERE state_canonical LIKE '%andaman and nicobar%'`.
+    # --- ADVANCED TEMPLATE EXAMPLES ---
+
+    # 1. TEMPLATE: Parallel Comparison (Rainfall & Production)
+    # The query must return two separate data blocks using UNION ALL.
+    # The final columns must be generic (e.g., 'Metric', 'Value', 'Context').
     
-    Example for 'average annual rainfall in maharashtra':
-    {{"sql_query": "SELECT ROUND(AVG(annual_rainfall_mm), 2) FROM integrated_data WHERE state_canonical = 'maharashtra';"}}
+    Example for 'Compare average annual rainfall in Karnataka and Kerala for the last 5 years. In parallel, list the highest rice production in each of those states during the same period.':
+    {{"sql_query": "SELECT state_canonical AS Region, 'Avg_Rainfall_mm' AS Metric, ROUND(AVG(annual_rainfall_mm), 2) AS Value, 'N/A' AS Context FROM integrated_data WHERE (state_canonical = 'karnataka' OR state_canonical = 'kerala') AND year >= (SELECT MAX(year) - 5 FROM integrated_data) GROUP BY state_canonical UNION ALL SELECT state_canonical AS Region, 'Max_Rice_Production' AS Metric, SUM(CASE WHEN crop LIKE '%Rice%' THEN production_tonnes ELSE 0 END) AS Value, 'Total Rice Production' AS Context FROM integrated_data WHERE (state_canonical = 'karnataka' OR state_canonical = 'kerala') AND year >= (SELECT MAX(year) - 5 FROM integrated_data) GROUP BY state_canonical;"}}
+
+    # 2. TEMPLATE: District Comparison (Ranking with Subqueries)
+    # This requires nested queries to find MAX/MIN in different states.
+    
+    Example for 'Identify the district in State_X with the highest production of Crop_Z in the most recent year available and compare that with the district with the lowest production of Crop_Z in State_Y.':
+    {{"sql_query": "SELECT 'Highest in Karnataka' AS Comparison, T1.district, T1.production_tonnes FROM integrated_data T1 WHERE T1.state_canonical = 'karnataka' AND T1.crop LIKE '%Rice%' AND T1.year = (SELECT MAX(year) FROM integrated_data) ORDER BY T1.production_tonnes DESC LIMIT 1 UNION ALL SELECT 'Lowest in Kerala' AS Comparison, T2.district, T2.production_tonnes FROM integrated_data T2 WHERE T2.state_canonical = 'kerala' AND T2.crop LIKE '%Rice%' AND T2.year = (SELECT MAX(year) FROM integrated_data) ORDER BY T2.production_tonnes ASC LIMIT 1;"}}
+    
+    # 3. TEMPLATE: Correlation/Trend Analysis (Time Series)
+    # Focuses on selecting time-series data for synthesis.
+
+    Example for 'Analyze the production trend of Wheat in Punjab over the last decade and correlate with climate data.':
+    {{"sql_query": "SELECT year, SUM(production_tonnes) AS Production, AVG(annual_rainfall_mm) AS Annual_Rainfall, AVG(yield_t_per_ha) AS Average_Yield FROM integrated_data WHERE state_canonical = 'punjab' AND crop LIKE '%Wheat%' AND year >= (SELECT MAX(year) - 10 FROM integrated_data) GROUP BY year ORDER BY year;"}}
     """
     
     try:
